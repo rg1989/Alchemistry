@@ -3,7 +3,8 @@
   "private": true,
   "version": "0.1.0",
   "description": "Transmute documents, images, audio, and video into fresh artifacts.",
-  "author": "Alchemistry",
+  "author": "Roman Grinevich",
+  "license": "MIT",
   "main": "out/main/main.js",
   "scripts": {
     "dev": "env -u ELECTRON_RUN_AS_NODE electron-vite dev",
