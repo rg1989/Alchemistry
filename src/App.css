@@ -1,0 +1,959 @@
+.app-shell {
+  width: min(1180px, calc(100vw - 28px));
+  height: 100vh;
+  margin: 0 auto;
+  padding: 14px 0 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+
+/* ---------- Shared ---------- */
+.eyebrow {
+  color: var(--accent-strong);
+  font-family: var(--serif);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+/* Periodic golden light wave that sweeps across a heading.
+   Gradient is 300% wide so the text is always fully covered (no transparent
+   gaps); the bright band only enters the text for the middle of the cycle,
+   leaving a natural pause between sweeps. */
+.shine-text {
+  background-image: linear-gradient(
+    110deg,
+    var(--text) 0%,
+    var(--text) 44%,
+    #ffe9ad 48%,
+    #fff8e6 50%,
+    #ffe9ad 52%,
+    var(--text) 56%,
+    var(--text) 100%
+  );
+  background-size: 300% 100%;
+  background-position: 0% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: transparent;
+  animation: text-shine 4.5s ease-in-out infinite;
+}
+
+.shine-text.shine-delay {
+  animation-delay: 2.2s;
+}
+
+@keyframes text-shine {
+  0% {
+    background-position: 0% 0;
+  }
+  100% {
+    background-position: 100% 0;
+  }
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.glass {
+  border: 1px solid var(--border);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 40%),
+    var(--surface);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
+}
+
+/* ---------- Hero ---------- */
+.hero-panel {
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 12px 22px;
+  background:
+    linear-gradient(135deg, rgba(255, 211, 107, 0.14), transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 40%),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.hero-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255, 216, 119, 0.06), transparent);
+  pointer-events: none;
+}
+
+.hero-title {
+  font-family: var(--display);
+  font-weight: 900;
+  font-size: clamp(1.9rem, 3.4vw, 2.5rem);
+  line-height: 1;
+  letter-spacing: 0.01em;
+  background: linear-gradient(180deg, #fff2cf 0%, var(--accent-strong) 45%, var(--accent-deep) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 4px 18px rgba(212, 169, 53, 0.35));
+  margin: 2px 0 5px;
+}
+
+.hero-sub {
+  max-width: 560px;
+  color: var(--muted);
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
+.hero-sigil {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 76px;
+  height: 76px;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.45)) drop-shadow(0 0 20px rgba(212, 169, 53, 0.4));
+}
+
+.hero-emblem {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+/* ---------- Workspace ---------- */
+.workspace-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  grid-template-rows: minmax(0, 1fr);
+  gap: 14px;
+  flex: 1;
+  min-height: 0;
+}
+
+.forge-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-height: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 35%),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+/* ---------- Dropzone + Cauldron ---------- */
+.forge-dropzone {
+  position: relative;
+  isolation: isolate;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow: hidden;
+  border: 1.5px dashed var(--border);
+  border-radius: 18px;
+  padding: 12px 18px 12px;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(212, 169, 53, 0.1), transparent 60%),
+    var(--bg-deep);
+  text-align: center;
+  transition: border-color 200ms ease, background 200ms ease, box-shadow 200ms ease;
+}
+
+.forge-dropzone.is-dragging {
+  border-color: var(--accent-strong);
+  border-style: solid;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(212, 169, 53, 0.24), transparent 62%),
+    var(--bg-deep);
+  box-shadow: inset 0 0 60px rgba(212, 169, 53, 0.16);
+}
+
+.forge-dropzone.is-success {
+  border-color: rgba(143, 206, 134, 0.5);
+}
+
+.cauldron-stage {
+  position: relative;
+  z-index: 0;
+  display: grid;
+  justify-items: center;
+  align-items: start;
+  width: 100%;
+  height: 116px;
+  margin-bottom: 0;
+}
+
+.cauldron-halo {
+  position: absolute;
+  top: 96px;
+  left: 50%;
+  width: 235px;
+  height: 235px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 196, 88, 0.4), transparent 68%);
+  filter: blur(10px);
+  opacity: 0.85;
+  transition: background 300ms ease;
+}
+
+.is-brewing .cauldron-halo {
+  animation: halo-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes halo-pulse {
+  0%, 100% {
+    opacity: 0.6;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+.cauldron {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.cauldron-lottie {
+  width: 300px;
+  height: 228px;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.5));
+}
+
+.cauldron-lottie svg {
+  display: block;
+}
+
+/* Frosted scrim so the enlarged cauldron (incl. bright foam) melts behind the copy */
+.cauldron-fade {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 78px;
+  bottom: 0;
+  z-index: 1;
+  pointer-events: none;
+  backdrop-filter: blur(9px) brightness(0.6) saturate(0.92);
+  -webkit-backdrop-filter: blur(9px) brightness(0.6) saturate(0.92);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 44px);
+  mask-image: linear-gradient(to bottom, transparent 0, #000 44px);
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    rgba(10, 7, 5, 0.5) 32%,
+    rgba(10, 7, 5, 0.84) 100%
+  );
+}
+
+.forge-dropzone > .eyebrow,
+.forge-dropzone > .dropzone-copy,
+.forge-dropzone > .source-sigil,
+.forge-dropzone > .dropzone-actions {
+  position: relative;
+  z-index: 2;
+}
+
+/* Keep dropzone copy legible even when it overlaps bright parts of the cauldron */
+.forge-dropzone > .eyebrow,
+.forge-dropzone .dropzone-copy h2,
+.forge-dropzone .dropzone-copy .muted,
+.forge-dropzone .dropzone-copy .allowed {
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.85), 0 0 12px rgba(0, 0, 0, 0.55);
+}
+
+.reagent-orb {
+  position: absolute;
+  top: -2px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 23px;
+  background: rgba(8, 6, 4, 0.82);
+  border: 1px solid var(--border-strong);
+}
+
+.dropzone-copy h2 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.2rem;
+  line-height: 1.1;
+  margin-bottom: 3px;
+}
+
+.allowed {
+  margin-top: 6px;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 0.62rem;
+  line-height: 1.5;
+  letter-spacing: 0.03em;
+}
+
+.source-sigil {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  width: min(100%, 460px);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 9px 12px;
+  background: rgba(0, 0, 0, 0.3);
+  text-align: left;
+}
+
+.sigil-meta {
+  flex: 1;
+  min-width: 0;
+}
+
+.sigil-meta strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.sigil-meta span {
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.sigil-mark {
+  display: grid;
+  min-width: 50px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-glow);
+  color: var(--accent-strong);
+  font-family: var(--mono);
+  font-weight: 800;
+  font-size: 0.78rem;
+}
+
+.dropzone-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 10px;
+}
+
+/* ---------- Buttons ---------- */
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0.45rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 10px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  cursor: pointer;
+  transition: background 160ms ease, border-color 160ms ease;
+}
+
+.icon-button:hover {
+  background: rgba(224, 131, 121, 0.18);
+  border-color: var(--error);
+  color: #ffd9d2;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  filter: grayscale(0.45);
+  opacity: 0.5;
+}
+
+/* ---------- Transmutation panel ---------- */
+.transmutation-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px;
+  background: var(--surface-soft);
+}
+
+.panel-head,
+.grimoire-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.panel-glyph,
+.grimoire-glyph {
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 11px;
+  border: 1px solid var(--border);
+  background: var(--surface-glow);
+  color: var(--accent-strong);
+  font-size: 21px;
+  flex-shrink: 0;
+}
+
+.panel-head h2,
+.grimoire-head h2 {
+  font-family: var(--serif);
+  font-weight: 600;
+  font-size: 1.25rem;
+  line-height: 1;
+}
+
+.panel-hint {
+  flex: 1 1 auto;
+  min-height: 0;
+  padding: 4px 2px;
+}
+
+.vial-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(186px, 1fr));
+  grid-auto-rows: min-content;
+  align-content: start;
+  gap: 10px;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.output-vial {
+  position: relative;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.output-vial:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.vial-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+.vial-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-size: 21px;
+}
+
+.vial-body {
+  min-width: 0;
+  display: grid;
+  gap: 1px;
+}
+
+.vial-ext {
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  color: var(--faint);
+}
+
+.vial-body strong {
+  font-size: 0.9rem;
+}
+
+.vial-body small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.72rem;
+  line-height: 1.2;
+}
+
+.vial-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: #1c1206;
+}
+
+/* ---------- Status rune ---------- */
+.status-rune {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 8px 12px;
+  background: rgba(0, 0, 0, 0.26);
+  color: var(--muted);
+  font-size: 0.85rem;
+  min-height: 38px;
+}
+
+.status-icon {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  color: var(--accent-strong);
+  background: var(--surface-glow);
+  flex-shrink: 0;
+}
+
+.status-rune.success {
+  color: #d6efcf;
+  border-color: rgba(143, 206, 134, 0.4);
+}
+
+.status-rune.success .status-icon {
+  color: var(--success);
+}
+
+.status-rune.error {
+  color: #f4ccc6;
+  border-color: rgba(224, 131, 121, 0.45);
+}
+
+.status-rune.error .status-icon {
+  color: var(--error);
+}
+
+/* ---------- Transmute button ---------- */
+.transmute-wrap {
+  position: relative;
+  display: flex;
+  justify-content: flex-start;
+  flex-shrink: 0;
+}
+
+.transmute-button,
+.secondary-button {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0.66rem 1.4rem;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffe49a 0%, var(--accent) 55%, var(--accent-deep) 100%);
+  color: #2a1908;
+  font-family: var(--serif);
+  font-weight: 700;
+  font-size: 0.98rem;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  box-shadow: 0 14px 34px rgba(212, 169, 53, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.transmute-shimmer {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: linear-gradient(110deg, transparent 35%, rgba(255, 255, 255, 0.6) 50%, transparent 65%);
+  background-size: 220% 100%;
+  mix-blend-mode: screen;
+  opacity: 0.55;
+  pointer-events: none;
+  animation: shimmer 3.4s linear infinite;
+}
+
+@keyframes shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+/* ---------- Arcane loader (boot + transmute) ---------- */
+.arcane-loader {
+  display: grid;
+  justify-items: center;
+  gap: 16px;
+}
+
+.arcane-loader-orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+}
+
+.arcane-loader-glow {
+  position: absolute;
+  inset: -42%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    rgba(255, 211, 122, 0.55),
+    rgba(212, 169, 53, 0.2) 46%,
+    transparent 70%
+  );
+  filter: blur(14px);
+  animation: loader-pulse 1.7s ease-in-out infinite;
+}
+
+.arcane-loader-sigil {
+  position: relative;
+  display: grid;
+  place-items: center;
+  color: var(--accent-strong);
+  filter: drop-shadow(0 0 16px rgba(255, 216, 119, 0.7));
+}
+
+.arcane-loader-label {
+  font-family: var(--serif);
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  font-size: 0.82rem;
+  color: var(--accent-strong);
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
+  animation: label-breathe 1.7s ease-in-out infinite;
+}
+
+@keyframes loader-pulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.82);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.12);
+  }
+}
+
+@keyframes label-breathe {
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Full-window splash while the app wakes up */
+.boot-splash {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(820px 560px at 50% 40%, rgba(212, 169, 53, 0.16), transparent 60%),
+    var(--bg-deep);
+}
+
+/* Frosted overlay over the forge while a transmutation brews */
+.forge-loading {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  border-radius: inherit;
+  background: rgba(8, 6, 4, 0.5);
+  backdrop-filter: blur(7px);
+  -webkit-backdrop-filter: blur(7px);
+}
+
+/* ---------- Success burst ---------- */
+.success-burst {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.success-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 60px;
+  height: 60px;
+  margin: -30px 0 0 -30px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-strong);
+}
+
+.spark {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 8px;
+  height: 8px;
+  margin: -4px 0 0 -4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff3cf, #ffba5a 65%, transparent);
+  box-shadow: 0 0 10px rgba(255, 196, 92, 0.9);
+}
+
+/* ---------- Grimoire ---------- */
+.grimoire-col {
+  min-height: 0;
+}
+
+.grimoire-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.045), transparent 30%),
+    var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.grimoire-head {
+  flex-shrink: 0;
+}
+
+.empty-grimoire {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin-top: 18px;
+  padding: 22px 16px;
+  border: 1px dashed var(--border);
+  border-radius: 16px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.empty-grimoire svg {
+  color: var(--accent);
+  opacity: 0.8;
+}
+
+.grimoire-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.grimoire-entry {
+  display: grid;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 11px;
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.entry-top {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+}
+
+.entry-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.entry-text {
+  min-width: 0;
+}
+
+.entry-text strong {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.entry-text span {
+  color: var(--muted);
+  font-size: 0.84rem;
+}
+
+.entry-text em {
+  font-style: normal;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+}
+
+.entry-error {
+  color: var(--error);
+  font-size: 0.85rem;
+  line-height: 1.35;
+}
+
+.vanished-note {
+  color: var(--faint);
+  font-size: 0.82rem;
+  font-style: italic;
+}
+
+.entry-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.entry-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0.42rem 0.72rem;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: background 150ms ease, border-color 150ms ease;
+}
+
+.entry-actions button:hover {
+  background: rgba(255, 216, 119, 0.16);
+  border-color: var(--border-strong);
+}
+
+/* ---------- Footer ---------- */
+.app-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+  margin-top: -6px;
+  padding: 0 4px;
+  line-height: 1;
+  color: var(--faint);
+  font-size: 0.7rem;
+}
+
+.app-footer .credit {
+  opacity: 0.8;
+}
+
+.app-footer strong {
+  color: var(--muted);
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+.footer-social {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.footer-social a {
+  display: inline-grid;
+  place-items: center;
+  width: 21px;
+  height: 21px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  color: var(--muted);
+  font-size: 13px;
+  transition: color 160ms ease, border-color 160ms ease, background 160ms ease, transform 160ms ease;
+}
+
+.footer-social a:hover {
+  color: var(--accent-strong);
+  border-color: var(--border);
+  background: var(--surface-glow);
+  transform: translateY(-1px);
+}
+
+.footer-social a:focus-visible {
+  outline: none;
+  box-shadow: var(--ring);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .transmute-shimmer,
+  .is-brewing .cauldron-halo,
+  .arcane-loader-glow,
+  .arcane-loader-label,
+  .shine-text {
+    animation: none;
+  }
+
+  .shine-text {
+    -webkit-text-fill-color: var(--text);
+    color: var(--text);
+  }
+}

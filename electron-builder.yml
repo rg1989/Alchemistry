@@ -1,0 +1,43 @@
+appId: com.alchemistry.app
+productName: Alchemistry
+copyright: Forged for tinkerers
+
+directories:
+  output: dist
+  buildResources: build
+
+afterPack: build/afterPack.cjs
+
+# Keep the implicit "**/*" include (so production node_modules ship) and
+# strip out source/dev files that are already compiled into out/.
+files:
+  - '!**/.vscode/**'
+  - '!src/**'
+  - '!electron/**'
+  - '!public/**'
+  - '!test-assets/**'
+  - '!.shots/**'
+  - '!**/*.{ts,tsx,map}'
+  - '!**/{tsconfig.json,tsconfig.app.json,tsconfig.node.json}'
+  - '!electron.vite.config.{js,ts,mjs,cjs}'
+  - '!{eslint.config.mjs,vite.config.ts,.eslintrc.cjs}'
+  - '!{README.md,.gitignore,package-lock.json}'
+
+# Native binaries cannot run from inside the asar archive, so unpack them.
+asar: true
+asarUnpack:
+  - '**/node_modules/ffmpeg-static/**'
+  - '**/node_modules/sharp/**'
+  - '**/node_modules/@img/**'
+
+mac:
+  target:
+    - dmg
+  icon: build/icon.icns
+  category: public.app-category.utilities
+  artifactName: ${productName}-${version}-${arch}.${ext}
+  # Ad-hoc sign only (no Apple Developer ID). Fine for personal use.
+  identity: null
+
+dmg:
+  artifactName: ${productName}-${version}-${arch}.${ext}
