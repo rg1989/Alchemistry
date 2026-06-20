@@ -1,14 +1,23 @@
+import type { ImageRefinementId } from './imageRefinements'
+
+export type { ImageRefinementId } from './imageRefinements'
+
 export type ConversionFamily = 'image' | 'video' | 'audio' | 'document' | 'pdf'
+
+export type TransmutationCategory = 'distill' | 'refine'
 
 export type TransmutationStatus = 'success' | 'failed'
 
 export type ForgeStatus = 'idle' | 'transmuting' | 'success' | 'error'
 
 export interface OutputOption {
+  id: string
   ext: string
   label: string
   description: string
   family: ConversionFamily
+  category: TransmutationCategory
+  refinement?: ImageRefinementId
 }
 
 export interface SourceFile {
@@ -22,6 +31,7 @@ export interface SourceFile {
 export interface TransmuteRequest {
   sourcePath: string
   outputExt: string
+  refinement?: ImageRefinementId
 }
 
 export interface GrimoireEntry {

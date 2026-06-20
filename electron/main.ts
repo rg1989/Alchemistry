@@ -16,6 +16,7 @@ import {
 import { inspectSourceFile } from './services/fileInfo'
 import { createUniqueOutputPath, getAlchemyOutputDir } from './services/outputPaths'
 import { ALLOWED_INPUT_EXTENSIONS } from '../src/shared/conversionMatrix'
+import { REFINEMENT_OUTPUT_SUFFIX, resolveRefinementOutputExt } from '../src/shared/imageRefinements'
 import type { GrimoireEntry, TransmuteRequest } from '../src/shared/types'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
@@ -113,11 +114,16 @@ function registerIpcHandlers(): void {
     const outputDir = getAlchemyOutputDir()
     await mkdir(outputDir, { recursive: true })
 
+    const outputExt = request.refinement
+      ? resolveRefinementOutputExt(source.ext, request.refinement)
+      : request.outputExt.replace(/^\./, '').toLowerCase()
+
     const outputPath = createUniqueOutputPath({
       sourcePath: source.path,
-      targetExt: request.outputExt,
+      targetExt: outputExt,
       outputDir,
       exists: (candidate) => existsSync(candidate),
+      nameSuffix: request.refinement ? REFINEMENT_OUTPUT_SUFFIX[request.refinement] : undefined,
     })
 
     const entryBase = {
@@ -125,7 +131,7 @@ function registerIpcHandlers(): void {
       sourcePath: source.path,
       sourceName: source.name,
       outputPath,
-      outputExt: request.outputExt.replace(/^\./, '').toLowerCase(),
+      outputExt,
       createdAt: Date.now(),
     }
 
@@ -133,7 +139,8 @@ function registerIpcHandlers(): void {
       await convertFile({
         sourcePath: source.path,
         outputPath,
-        outputExt: request.outputExt,
+        outputExt,
+        refinement: request.refinement,
       })
 
       const entry: GrimoireEntry = {

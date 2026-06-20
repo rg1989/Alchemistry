@@ -6,15 +6,25 @@ import type { OutputOption } from '../shared/types'
 
 interface OutputVialProps {
   option: OutputOption
+  sourceExt?: string
   selected: boolean
   disabled: boolean
   index: number
   onSelect: (option: OutputOption) => void
 }
 
-export function OutputVial({ option, selected, disabled, index, onSelect }: OutputVialProps) {
+export function OutputVial({
+  option,
+  sourceExt,
+  selected,
+  disabled,
+  index,
+  onSelect,
+}: OutputVialProps) {
   const visual = getFamilyVisual(option.family)
   const Icon = visual.icon
+  const displayExt =
+    option.ext === 'same' ? `.${sourceExt === 'jpeg' ? 'jpg' : sourceExt ?? 'same'}` : `.${option.ext}`
 
   return (
     <motion.button
@@ -45,7 +55,7 @@ export function OutputVial({ option, selected, disabled, index, onSelect }: Outp
       </span>
 
       <span className="vial-body">
-        <span className="vial-ext">.{option.ext}</span>
+        <span className="vial-ext">{displayExt}</span>
         <strong>{option.label}</strong>
         <small>{option.description}</small>
       </span>

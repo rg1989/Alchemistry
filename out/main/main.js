@@ -9,27 +9,121 @@ const node_child_process = require("node:child_process");
 const node_module = require("node:module");
 const marked = require("marked");
 const pdfParse = require("pdf-parse");
+const backgroundRemovalNode = require("@imgly/background-removal-node");
 const sharp = require("sharp");
 const os = require("node:os");
+const IMAGE_REFINEMENTS = [
+  {
+    id: "remove-background",
+    ext: "png",
+    family: "image",
+    category: "refine",
+    refinement: "remove-background",
+    label: "Void Background",
+    description: "Banish the backdrop and keep a transparent PNG."
+  },
+  {
+    id: "resize-max",
+    ext: "same",
+    family: "image",
+    category: "refine",
+    refinement: "resize-max",
+    label: "Shrink Sigil",
+    description: "Fit within 1920px on the longest edge without upscaling."
+  },
+  {
+    id: "compress",
+    ext: "same",
+    family: "image",
+    category: "refine",
+    refinement: "compress",
+    label: "Lighten Vial",
+    description: "Reduce file weight with smart compression."
+  },
+  {
+    id: "strip-metadata",
+    ext: "same",
+    family: "image",
+    category: "refine",
+    refinement: "strip-metadata",
+    label: "Scrub Sigils",
+    description: "Remove hidden EXIF and metadata."
+  },
+  {
+    id: "auto-orient",
+    ext: "same",
+    family: "image",
+    category: "refine",
+    refinement: "auto-orient",
+    label: "True North",
+    description: "Fix rotation from camera metadata."
+  },
+  {
+    id: "trim-borders",
+    ext: "same",
+    family: "image",
+    category: "refine",
+    refinement: "trim-borders",
+    label: "Trim Frame",
+    description: "Crop empty margins around the image."
+  },
+  {
+    id: "grayscale",
+    ext: "same",
+    family: "image",
+    category: "refine",
+    refinement: "grayscale",
+    label: "Ash Tint",
+    description: "Bleach color into monochrome."
+  }
+];
+const REFINEMENT_OUTPUT_SUFFIX = {
+  "remove-background": "no-bg",
+  "resize-max": "resized",
+  compress: "compressed",
+  "strip-metadata": "clean",
+  "auto-orient": "oriented",
+  "trim-borders": "trimmed",
+  grayscale: "mono"
+};
+function resolveRefinementOutputExt(sourceExt, refinement) {
+  const rule = IMAGE_REFINEMENTS.find((option) => option.refinement === refinement);
+  if (!rule) {
+    throw new Error("That refinement is not in the grimoire yet.");
+  }
+  if (rule.ext === "same") {
+    return sourceExt === "jpeg" ? "jpg" : sourceExt;
+  }
+  return rule.ext;
+}
+function getImageRefinement(refinement) {
+  return IMAGE_REFINEMENTS.find((option) => option.refinement === refinement);
+}
 const imageOutputs = (...extensions) => extensions.map((ext) => ({
+  id: ext,
   ext,
   family: "image",
+  category: "distill",
   label: ext === "ico" ? "Shortcut Sigil" : ext === "webp" ? "Essence of WebP" : `${ext.toUpperCase()} Phial`,
   description: `Distill this image into .${ext}.`
 }));
 const audioOutputs = (...extensions) => extensions.map((ext) => ({
+  id: ext,
   ext,
   family: "audio",
+  category: "distill",
   label: `${ext.toUpperCase()} Echo`,
   description: `Bottle the sound as .${ext}.`
 }));
 const videoOutputs = (...extensions) => extensions.map((ext) => ({
+  id: ext,
   ext,
   family: "video",
+  category: "distill",
   label: `${ext.toUpperCase()} Moving Rune`,
   description: `Reforge the moving picture as .${ext}.`
 }));
-const documentOutput = (ext, label, description, family = "document") => ({ ext, label, description, family });
+const documentOutput = (ext, label, description, family = "document") => ({ id: ext, ext, label, description, family, category: "distill" });
 const CONVERSION_MATRIX = [
   { inputExt: "png", family: "image", outputs: imageOutputs("jpg", "webp", "avif", "tiff") },
   { inputExt: "jpg", family: "image", outputs: imageOutputs("png", "webp", "avif", "tiff") },
@@ -127,19 +221,136 @@ function getAllowedOutputs(extension) {
 function isAllowedInputExtension(extension) {
   return Boolean(getRuleForExtension(extension));
 }
+const require$2 = node_module.createRequire(require("url").pathToFileURL(__filename).href);
+const MAX_DIMENSION = 1920;
+const COMPRESS_QUALITY = 80;
+async function processImage({
+  sourcePath,
+  outputPath,
+  outputExt,
+  sourceExt,
+  refinement
+}) {
+  if (!refinement) {
+    await convertImageFormat(sourcePath, outputPath, outputExt);
+    return;
+  }
+  const resolvedExt = resolveRefinementOutputExt(sourceExt, refinement);
+  switch (refinement) {
+    case "remove-background":
+      await removeImageBackground(sourcePath, outputPath);
+      return;
+    case "resize-max":
+      await saveImage(
+        sharp(sourcePath).rotate().resize(MAX_DIMENSION, MAX_DIMENSION, {
+          fit: "inside",
+          withoutEnlargement: true
+        }),
+        outputPath,
+        resolvedExt
+      );
+      return;
+    case "compress":
+      await saveImage(sharp(sourcePath).rotate(), outputPath, resolvedExt, {
+        aggressive: true
+      });
+      return;
+    case "strip-metadata":
+      await saveImage(sharp(sourcePath).rotate(), outputPath, resolvedExt);
+      return;
+    case "auto-orient":
+      await saveImage(sharp(sourcePath).rotate(), outputPath, resolvedExt);
+      return;
+    case "trim-borders":
+      await saveImage(sharp(sourcePath).rotate().trim(), outputPath, resolvedExt);
+      return;
+    case "grayscale":
+      await saveImage(sharp(sourcePath).rotate().grayscale(), outputPath, resolvedExt);
+      return;
+    default:
+      throw new Error("That refinement is not in the grimoire yet.");
+  }
+}
+async function convertImageFormat(sourcePath, outputPath, outputExt) {
+  await saveImage(sharp(sourcePath), outputPath, outputExt);
+}
+async function removeImageBackground(sourcePath, outputPath) {
+  const blob = await backgroundRemovalNode.removeBackground(sourcePath, {
+    publicPath: getBackgroundRemovalPublicPath(),
+    model: "medium",
+    output: {
+      format: "image/png",
+      quality: 0.9
+    }
+  });
+  await promises.writeFile(outputPath, Buffer.from(await blob.arrayBuffer()));
+}
+function getBackgroundRemovalPublicPath() {
+  const entryPath = require$2.resolve("@imgly/background-removal-node");
+  const distPath = path.dirname(unpackAsarPath(entryPath));
+  return node_url.pathToFileURL(`${distPath}${path.sep}`).href;
+}
+function unpackAsarPath(filePath) {
+  return filePath.replace(`app.asar${path.sep}`, `app.asar.unpacked${path.sep}`);
+}
+async function saveImage(pipeline, outputPath, outputExt, options = {}) {
+  const format = outputExt === "jpg" ? "jpeg" : outputExt;
+  const quality = options.aggressive ? COMPRESS_QUALITY : void 0;
+  await pipeline.toFormat(format, getFormatOptions(format, quality)).toFile(outputPath);
+}
+function getFormatOptions(format, quality = COMPRESS_QUALITY) {
+  if (format === "jpeg") {
+    return { quality, mozjpeg: true };
+  }
+  if (format === "webp") {
+    return { quality };
+  }
+  if (format === "png") {
+    return { compressionLevel: 9, adaptiveFiltering: true };
+  }
+  if (format === "avif") {
+    return { quality };
+  }
+  if (format === "tiff") {
+    return { quality };
+  }
+  return {};
+}
 const require$1 = node_module.createRequire(require("url").pathToFileURL(__filename).href);
 const rawFfmpegPath = require$1("ffmpeg-static");
 const ffmpegPath = rawFfmpegPath ? rawFfmpegPath.replace("app.asar" + path.sep, "app.asar.unpacked" + path.sep) : null;
 async function convertFile({
   sourcePath,
   outputPath,
-  outputExt
+  outputExt,
+  refinement
 }) {
   const sourceExt = path.extname(sourcePath).replace(/^\./, "").toLowerCase();
   const normalizedOutputExt = outputExt.replace(/^\./, "").toLowerCase();
   const rule = getRuleForExtension(sourceExt);
   if (!rule) {
     throw new Error("This reagent has no known transmutations.");
+  }
+  if (refinement) {
+    if (rule.family !== "image") {
+      throw new Error("Only image reagents can be refined.");
+    }
+    const refinementOption = getImageRefinement(refinement);
+    if (!refinementOption) {
+      throw new Error("That refinement is not in the grimoire yet.");
+    }
+    const expectedExt = resolveRefinementOutputExt(sourceExt, refinement);
+    if (normalizedOutputExt !== expectedExt) {
+      throw new Error(`Refinement .${refinement} expects a .${expectedExt} artifact.`);
+    }
+    await processImage({
+      sourcePath,
+      outputPath,
+      outputExt: normalizedOutputExt,
+      sourceExt,
+      refinement
+    });
+    return;
   }
   const isOutputAllowed = getAllowedOutputs(sourceExt).some(
     (output) => output.ext === normalizedOutputExt
@@ -148,7 +359,12 @@ async function convertFile({
     throw new Error(`.${sourceExt} cannot be transmuted into .${normalizedOutputExt}.`);
   }
   if (rule.family === "image") {
-    await convertImage(sourcePath, outputPath, normalizedOutputExt);
+    await processImage({
+      sourcePath,
+      outputPath,
+      outputExt: normalizedOutputExt,
+      sourceExt
+    });
     return;
   }
   if (rule.family === "audio" || rule.family === "video") {
@@ -160,10 +376,6 @@ async function convertFile({
     return;
   }
   await convertDocument(sourcePath, outputPath, sourceExt, normalizedOutputExt);
-}
-async function convertImage(sourcePath, outputPath, outputExt) {
-  const format = outputExt === "jpg" ? "jpeg" : outputExt;
-  await sharp(sourcePath).toFormat(format).toFile(outputPath);
 }
 async function convertMedia(sourcePath, outputPath) {
   if (!ffmpegPath) {
@@ -379,19 +591,21 @@ function createUniqueOutputPath({
   sourcePath,
   targetExt,
   outputDir,
-  exists
+  exists,
+  nameSuffix
 }) {
   const parsed = path.parse(sourcePath);
   const normalizedExt = targetExt.startsWith(".") ? targetExt : `.${targetExt}`;
-  const firstCandidate = path.join(outputDir, `${parsed.name}${normalizedExt}`);
+  const baseName = nameSuffix ? `${parsed.name} ${nameSuffix}` : parsed.name;
+  const firstCandidate = path.join(outputDir, `${baseName}${normalizedExt}`);
   if (!exists(firstCandidate)) {
     return firstCandidate;
   }
   let suffix = 2;
-  let candidate = path.join(outputDir, `${parsed.name} ${suffix}${normalizedExt}`);
+  let candidate = path.join(outputDir, `${baseName} ${suffix}${normalizedExt}`);
   while (exists(candidate)) {
     suffix += 1;
-    candidate = path.join(outputDir, `${parsed.name} ${suffix}${normalizedExt}`);
+    candidate = path.join(outputDir, `${baseName} ${suffix}${normalizedExt}`);
   }
   return candidate;
 }
@@ -473,25 +687,28 @@ function registerIpcHandlers() {
     }
     const outputDir = getAlchemyOutputDir();
     await promises.mkdir(outputDir, { recursive: true });
+    const outputExt = request.refinement ? resolveRefinementOutputExt(source.ext, request.refinement) : request.outputExt.replace(/^\./, "").toLowerCase();
     const outputPath = createUniqueOutputPath({
       sourcePath: source.path,
-      targetExt: request.outputExt,
+      targetExt: outputExt,
       outputDir,
-      exists: (candidate) => existsSync(candidate)
+      exists: (candidate) => existsSync(candidate),
+      nameSuffix: request.refinement ? REFINEMENT_OUTPUT_SUFFIX[request.refinement] : void 0
     });
     const entryBase = {
       id: node_crypto.randomUUID(),
       sourcePath: source.path,
       sourceName: source.name,
       outputPath,
-      outputExt: request.outputExt.replace(/^\./, "").toLowerCase(),
+      outputExt,
       createdAt: Date.now()
     };
     try {
       await convertFile({
         sourcePath: source.path,
         outputPath,
-        outputExt: request.outputExt
+        outputExt,
+        refinement: request.refinement
       });
       const entry = {
         ...entryBase,

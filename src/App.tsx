@@ -12,7 +12,8 @@ import { ForgeDropzone } from './components/ForgeDropzone'
 import { GrimoirePanel } from './components/GrimoirePanel'
 import { OutputVial } from './components/OutputVial'
 import { SuccessBurst } from './components/SuccessBurst'
-import { ALLOWED_INPUT_EXTENSIONS, getAllowedOutputs } from './shared/conversionMatrix'
+import { ALLOWED_INPUT_EXTENSIONS, getRecipeOptions } from './shared/conversionMatrix'
+import { resolveRefinementOutputExt } from './shared/imageRefinements'
 import type {
   ForgeStatus,
   GrimoireEntryWithExistence,
@@ -31,7 +32,11 @@ function App() {
   const celebrateTimer = useRef<number | undefined>(undefined)
   const bootTimer = useRef<number | undefined>(undefined)
 
-  const outputOptions = useMemo(() => getAllowedOutputs(source?.ext ?? ''), [source])
+  const recipeOptions = useMemo(() => getRecipeOptions(source?.ext ?? ''), [source])
+  const allOutputOptions = useMemo(
+    () => [...recipeOptions.distill, ...recipeOptions.refine],
+    [recipeOptions],
+  )
   const isTransmuting = status === 'transmuting'
 
   useEffect(() => {
@@ -63,7 +68,7 @@ function App() {
     }
 
     setSource(picked)
-    setSelectedOutput(getAllowedOutputs(picked.ext)[0] ?? null)
+    setSelectedOutput(getRecipeOptions(picked.ext).distill[0] ?? getRecipeOptions(picked.ext).refine[0] ?? null)
     setMessage(`${picked.name} is ready. Choose an elixir.`)
   }
 
@@ -90,7 +95,7 @@ function App() {
 
     setStatus('idle')
     setSource(inspected)
-    setSelectedOutput(getAllowedOutputs(inspected.ext)[0] ?? null)
+    setSelectedOutput(getRecipeOptions(inspected.ext).distill[0] ?? getRecipeOptions(inspected.ext).refine[0] ?? null)
     setMessage(`${inspected.name} landed in the forge.`)
   }
 
@@ -103,13 +108,22 @@ function App() {
     setMessage('Brewing the mixture...')
 
     try {
+      const outputExt = selectedOutput.refinement
+        ? resolveRefinementOutputExt(source.ext, selectedOutput.refinement)
+        : selectedOutput.ext
+
       const entry = await window.alchemistry.transmute({
         sourcePath: source.path,
-        outputExt: selectedOutput.ext,
+        outputExt,
+        refinement: selectedOutput.refinement,
       })
 
       setStatus('success')
-      setMessage(`Transmutation complete. ${entry.sourceName} became .${entry.outputExt}.`)
+      setMessage(
+        selectedOutput.refinement
+          ? `${entry.sourceName} was refined into ${selectedOutput.label.toLowerCase()}.`
+          : `Transmutation complete. ${entry.sourceName} became .${entry.outputExt}.`,
+      )
       setCelebrate(true)
       window.clearTimeout(celebrateTimer.current)
       celebrateTimer.current = window.setTimeout(() => setCelebrate(false), 1300)
@@ -153,8 +167,9 @@ function App() {
             <p className="eyebrow">Arcane utility guild</p>
             <h1 className="hero-title">Alchemistry</h1>
             <p className="hero-sub">
-              Transmute documents, images, audio, and video into fresh artifacts. Every
-              successful craft settles into <code>~/Downloads/alchemy</code>.
+              Transmute documents, images, audio, and video into fresh artifacts. Refine images
+              with background removal, compression, and more. Every successful craft settles into{' '}
+              <code>~/Downloads/alchemy</code>.
             </p>
           </div>
           <motion.div
@@ -224,7 +239,7 @@ function App() {
                   >
                     Select a reagent and the valid elixirs will reveal themselves.
                   </motion.p>
-                ) : outputOptions.length === 0 ? (
+                ) : allOutputOptions.length === 0 ? (
                   <motion.p
                     key="none"
                     className="muted panel-hint"
@@ -237,21 +252,48 @@ function App() {
                 ) : (
                   <motion.div
                     key={source.ext}
-                    className="vial-grid"
+                    className="recipe-sections"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                   >
-                    {outputOptions.map((option, index) => (
-                      <OutputVial
-                        key={option.ext}
-                        option={option}
-                        index={index}
-                        selected={selectedOutput?.ext === option.ext}
-                        disabled={isTransmuting}
-                        onSelect={setSelectedOutput}
-                      />
-                    ))}
+                    {recipeOptions.distill.length > 0 ? (
+                      <section className="recipe-section">
+                        <p className="recipe-section-label">Distill</p>
+                        <div className="vial-grid">
+                          {recipeOptions.distill.map((option, index) => (
+                            <OutputVial
+                              key={option.id}
+                              option={option}
+                              sourceExt={source.ext}
+                              index={index}
+                              selected={selectedOutput?.id === option.id}
+                              disabled={isTransmuting}
+                              onSelect={setSelectedOutput}
+                            />
+                          ))}
+                        </div>
+                      </section>
+                    ) : null}
+
+                    {recipeOptions.refine.length > 0 ? (
+                      <section className="recipe-section">
+                        <p className="recipe-section-label">Refine</p>
+                        <div className="vial-grid">
+                          {recipeOptions.refine.map((option, index) => (
+                            <OutputVial
+                              key={option.id}
+                              option={option}
+                              sourceExt={source.ext}
+                              index={index + recipeOptions.distill.length}
+                              selected={selectedOutput?.id === option.id}
+                              disabled={isTransmuting}
+                              onSelect={setSelectedOutput}
+                            />
+                          ))}
+                        </div>
+                      </section>
+                    ) : null}
                   </motion.div>
                 )}
               </AnimatePresence>

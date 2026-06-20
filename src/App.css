@@ -459,10 +459,34 @@ button:disabled {
   grid-auto-rows: min-content;
   align-content: start;
   gap: 10px;
+  flex: 0 0 auto;
+  min-height: 0;
+  overflow: visible;
+  padding-right: 4px;
+}
+
+.recipe-sections {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   flex: 1 1 auto;
   min-height: 0;
   overflow-y: auto;
   padding-right: 4px;
+}
+
+.recipe-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.recipe-section-label {
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--faint);
 }
 
 .output-vial {

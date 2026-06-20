@@ -30,6 +30,8 @@ asarUnpack:
   - '**/node_modules/ffmpeg-static/**'
   - '**/node_modules/sharp/**'
   - '**/node_modules/@img/**'
+  - '**/node_modules/onnxruntime-node/**'
+  - '**/node_modules/@imgly/background-removal-node/**'
 
 mac:
   target:

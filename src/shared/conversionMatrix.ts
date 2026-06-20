@@ -1,3 +1,4 @@
+import { getImageRefinements } from './imageRefinements'
 import type { ConversionFamily, OutputOption } from './types'
 
 export interface ConversionRule {
@@ -8,8 +9,10 @@ export interface ConversionRule {
 
 const imageOutputs = (...extensions: string[]): OutputOption[] =>
   extensions.map((ext) => ({
+    id: ext,
     ext,
     family: 'image',
+    category: 'distill',
     label:
       ext === 'ico'
         ? 'Shortcut Sigil'
@@ -21,16 +24,20 @@ const imageOutputs = (...extensions: string[]): OutputOption[] =>
 
 const audioOutputs = (...extensions: string[]): OutputOption[] =>
   extensions.map((ext) => ({
+    id: ext,
     ext,
     family: 'audio',
+    category: 'distill',
     label: `${ext.toUpperCase()} Echo`,
     description: `Bottle the sound as .${ext}.`,
   }))
 
 const videoOutputs = (...extensions: string[]): OutputOption[] =>
   extensions.map((ext) => ({
+    id: ext,
     ext,
     family: 'video',
+    category: 'distill',
     label: `${ext.toUpperCase()} Moving Rune`,
     description: `Reforge the moving picture as .${ext}.`,
   }))
@@ -40,7 +47,7 @@ const documentOutput = (
   label: string,
   description: string,
   family: ConversionFamily = 'document',
-): OutputOption => ({ ext, label, description, family })
+): OutputOption => ({ id: ext, ext, label, description, family, category: 'distill' })
 
 export const CONVERSION_MATRIX: ConversionRule[] = [
   { inputExt: 'png', family: 'image', outputs: imageOutputs('jpg', 'webp', 'avif', 'tiff') },
@@ -140,6 +147,22 @@ export function getRuleForExtension(extension: string): ConversionRule | undefin
 
 export function getAllowedOutputs(extension: string): OutputOption[] {
   return getRuleForExtension(extension)?.outputs ?? []
+}
+
+export function getRecipeOptions(extension: string): {
+  distill: OutputOption[]
+  refine: OutputOption[]
+} {
+  const rule = getRuleForExtension(extension)
+
+  if (!rule) {
+    return { distill: [], refine: [] }
+  }
+
+  return {
+    distill: rule.outputs,
+    refine: rule.family === 'image' ? getImageRefinements() : [],
+  }
 }
 
 export function isAllowedInputExtension(extension: string): boolean {

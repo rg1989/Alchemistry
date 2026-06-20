@@ -37349,25 +37349,109 @@ function formatBytes(bytes) {
   }
   return `${value2.toFixed(value2 >= 10 ? 0 : 1)} ${units[unitIndex]}`;
 }
+const IMAGE_REFINEMENTS = [
+  {
+    id: "remove-background",
+    ext: "png",
+    family: "image",
+    category: "refine",
+    refinement: "remove-background",
+    label: "Void Background",
+    description: "Banish the backdrop and keep a transparent PNG."
+  },
+  {
+    id: "resize-max",
+    ext: "same",
+    family: "image",
+    category: "refine",
+    refinement: "resize-max",
+    label: "Shrink Sigil",
+    description: "Fit within 1920px on the longest edge without upscaling."
+  },
+  {
+    id: "compress",
+    ext: "same",
+    family: "image",
+    category: "refine",
+    refinement: "compress",
+    label: "Lighten Vial",
+    description: "Reduce file weight with smart compression."
+  },
+  {
+    id: "strip-metadata",
+    ext: "same",
+    family: "image",
+    category: "refine",
+    refinement: "strip-metadata",
+    label: "Scrub Sigils",
+    description: "Remove hidden EXIF and metadata."
+  },
+  {
+    id: "auto-orient",
+    ext: "same",
+    family: "image",
+    category: "refine",
+    refinement: "auto-orient",
+    label: "True North",
+    description: "Fix rotation from camera metadata."
+  },
+  {
+    id: "trim-borders",
+    ext: "same",
+    family: "image",
+    category: "refine",
+    refinement: "trim-borders",
+    label: "Trim Frame",
+    description: "Crop empty margins around the image."
+  },
+  {
+    id: "grayscale",
+    ext: "same",
+    family: "image",
+    category: "refine",
+    refinement: "grayscale",
+    label: "Ash Tint",
+    description: "Bleach color into monochrome."
+  }
+];
+function resolveRefinementOutputExt(sourceExt, refinement) {
+  const rule = IMAGE_REFINEMENTS.find((option) => option.refinement === refinement);
+  if (!rule) {
+    throw new Error("That refinement is not in the grimoire yet.");
+  }
+  if (rule.ext === "same") {
+    return sourceExt === "jpeg" ? "jpg" : sourceExt;
+  }
+  return rule.ext;
+}
+function getImageRefinements() {
+  return IMAGE_REFINEMENTS.map((option) => ({ ...option }));
+}
 const imageOutputs = (...extensions) => extensions.map((ext) => ({
+  id: ext,
   ext,
   family: "image",
+  category: "distill",
   label: ext === "ico" ? "Shortcut Sigil" : ext === "webp" ? "Essence of WebP" : `${ext.toUpperCase()} Phial`,
   description: `Distill this image into .${ext}.`
 }));
 const audioOutputs = (...extensions) => extensions.map((ext) => ({
+  id: ext,
   ext,
   family: "audio",
+  category: "distill",
   label: `${ext.toUpperCase()} Echo`,
   description: `Bottle the sound as .${ext}.`
 }));
 const videoOutputs = (...extensions) => extensions.map((ext) => ({
+  id: ext,
   ext,
   family: "video",
+  category: "distill",
   label: `${ext.toUpperCase()} Moving Rune`,
   description: `Reforge the moving picture as .${ext}.`
 }));
-const documentOutput = (ext, label, description, family = "document") => ({ ext, label, description, family });
+const documentOutput = (ext, label, description, family = "document") => ({ id: ext, ext, label, description, family, category: "distill" });
 const CONVERSION_MATRIX = [
   { inputExt: "png", family: "image", outputs: imageOutputs("jpg", "webp", "avif", "tiff") },
   { inputExt: "jpg", family: "image", outputs: imageOutputs("png", "webp", "avif", "tiff") },
@@ -37459,8 +37543,15 @@ function getRuleForExtension(extension) {
   const normalized = normalizeExtension(extension);
   return CONVERSION_MATRIX.find((rule) => rule.inputExt === normalized);
 }
-function getAllowedOutputs(extension) {
-  return getRuleForExtension(extension)?.outputs ?? [];
+function getRecipeOptions(extension) {
+  const rule = getRuleForExtension(extension);
+  if (!rule) {
+    return { distill: [], refine: [] };
+  }
+  return {
+    distill: rule.outputs,
+    refine: rule.family === "image" ? getImageRefinements() : []
+  };
 }
 function getOutputFamily(extension) {
   return OUTPUT_FAMILY_BY_EXT.get(normalizeExtension(extension)) ?? "document";
@@ -37565,9 +37656,17 @@ function formatRelativeTime(timestamp) {
   }
   return new Date(timestamp).toLocaleDateString();
 }
-function OutputVial({ option, selected, disabled, index: index2, onSelect }) {
+function OutputVial({
+  option,
+  sourceExt,
+  selected,
+  disabled,
+  index: index2,
+  onSelect
+}) {
   const visual = getFamilyVisual(option.family);
   const Icon2 = visual.icon;
+  const displayExt = option.ext === "same" ? `.${sourceExt === "jpeg" ? "jpg" : sourceExt ?? "same"}` : `.${option.ext}`;
   return /* @__PURE__ */ jsxRuntimeExports.jsxs(
     motion.button,
     {
@@ -37595,10 +37694,7 @@ function OutputVial({ option, selected, disabled, index: index2, onSelect }) {
         ) : null,
         /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "vial-icon", style: { color: visual.hue, background: `radial-gradient(circle at 35% 30%, ${visual.glow}, transparent 70%)` }, children: /* @__PURE__ */ jsxRuntimeExports.jsx(Icon2, {}) }),
         /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "vial-body", children: [
-          /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { className: "vial-ext", children: [
-            ".",
-            option.ext
-          ] }),
+          /* @__PURE__ */ jsxRuntimeExports.jsx("span", { className: "vial-ext", children: displayExt }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("strong", { children: option.label }),
           /* @__PURE__ */ jsxRuntimeExports.jsx("small", { children: option.description })
         ] }),
@@ -37660,7 +37756,11 @@ function App() {
   const [booting, setBooting] = reactExports.useState(true);
   const celebrateTimer = reactExports.useRef(void 0);
   const bootTimer = reactExports.useRef(void 0);
-  const outputOptions = reactExports.useMemo(() => getAllowedOutputs(source?.ext ?? ""), [source]);
+  const recipeOptions = reactExports.useMemo(() => getRecipeOptions(source?.ext ?? ""), [source]);
+  const allOutputOptions = reactExports.useMemo(
+    () => [...recipeOptions.distill, ...recipeOptions.refine],
+    [recipeOptions]
+  );
   const isTransmuting = status === "transmuting";
   reactExports.useEffect(() => {
     const start = Date.now();
@@ -37686,7 +37786,7 @@ function App() {
       return;
     }
     setSource(picked);
-    setSelectedOutput(getAllowedOutputs(picked.ext)[0] ?? null);
+    setSelectedOutput(getRecipeOptions(picked.ext).distill[0] ?? getRecipeOptions(picked.ext).refine[0] ?? null);
     setMessage(`${picked.name} is ready. Choose an elixir.`);
   }
   function handleDroppedFile(file) {
@@ -37707,7 +37807,7 @@ function App() {
     }
     setStatus("idle");
     setSource(inspected);
-    setSelectedOutput(getAllowedOutputs(inspected.ext)[0] ?? null);
+    setSelectedOutput(getRecipeOptions(inspected.ext).distill[0] ?? getRecipeOptions(inspected.ext).refine[0] ?? null);
     setMessage(`${inspected.name} landed in the forge.`);
   }
   async function transmute() {
@@ -37717,12 +37817,16 @@ function App() {
     setStatus("transmuting");
     setMessage("Brewing the mixture...");
     try {
+      const outputExt = selectedOutput.refinement ? resolveRefinementOutputExt(source.ext, selectedOutput.refinement) : selectedOutput.ext;
       const entry = await window.alchemistry.transmute({
         sourcePath: source.path,
-        outputExt: selectedOutput.ext
+        outputExt,
+        refinement: selectedOutput.refinement
       });
       setStatus("success");
-      setMessage(`Transmutation complete. ${entry.sourceName} became .${entry.outputExt}.`);
+      setMessage(
+        selectedOutput.refinement ? `${entry.sourceName} was refined into ${selectedOutput.label.toLowerCase()}.` : `Transmutation complete. ${entry.sourceName} became .${entry.outputExt}.`
+      );
       setCelebrate(true);
       window.clearTimeout(celebrateTimer.current);
       celebrateTimer.current = window.setTimeout(() => setCelebrate(false), 1300);
@@ -37762,7 +37866,8 @@ function App() {
               /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "eyebrow", children: "Arcane utility guild" }),
               /* @__PURE__ */ jsxRuntimeExports.jsx("h1", { className: "hero-title", children: "Alchemistry" }),
               /* @__PURE__ */ jsxRuntimeExports.jsxs("p", { className: "hero-sub", children: [
-                "Transmute documents, images, audio, and video into fresh artifacts. Every successful craft settles into ",
+                "Transmute documents, images, audio, and video into fresh artifacts. Refine images with background removal, compression, and more. Every successful craft settles into",
+                " ",
                 /* @__PURE__ */ jsxRuntimeExports.jsx("code", { children: "~/Downloads/alchemy" }),
                 "."
               ] })
@@ -37834,7 +37939,7 @@ function App() {
                     children: "Select a reagent and the valid elixirs will reveal themselves."
                   },
                   "hint"
-                ) : outputOptions.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
+                ) : allOutputOptions.length === 0 ? /* @__PURE__ */ jsxRuntimeExports.jsx(
                   motion.p,
                   {
                     className: "muted panel-hint",
@@ -37844,24 +37949,45 @@ function App() {
                     children: "This reagent has no known transmutations."
                   },
                   "none"
-                ) : /* @__PURE__ */ jsxRuntimeExports.jsx(
+                ) : /* @__PURE__ */ jsxRuntimeExports.jsxs(
                   motion.div,
                   {
-                    className: "vial-grid",
+                    className: "recipe-sections",
                     initial: { opacity: 0 },
                     animate: { opacity: 1 },
                     exit: { opacity: 0 },
-                    children: outputOptions.map((option, index2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
-                      OutputVial,
-                      {
-                        option,
-                        index: index2,
-                        selected: selectedOutput?.ext === option.ext,
-                        disabled: isTransmuting,
-                        onSelect: setSelectedOutput
-                      },
-                      option.ext
-                    ))
+                    children: [
+                      recipeOptions.distill.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "recipe-section", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "recipe-section-label", children: "Distill" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "vial-grid", children: recipeOptions.distill.map((option, index2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          OutputVial,
+                          {
+                            option,
+                            sourceExt: source.ext,
+                            index: index2,
+                            selected: selectedOutput?.id === option.id,
+                            disabled: isTransmuting,
+                            onSelect: setSelectedOutput
+                          },
+                          option.id
+                        )) })
+                      ] }) : null,
+                      recipeOptions.refine.length > 0 ? /* @__PURE__ */ jsxRuntimeExports.jsxs("section", { className: "recipe-section", children: [
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("p", { className: "recipe-section-label", children: "Refine" }),
+                        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { className: "vial-grid", children: recipeOptions.refine.map((option, index2) => /* @__PURE__ */ jsxRuntimeExports.jsx(
+                          OutputVial,
+                          {
+                            option,
+                            sourceExt: source.ext,
+                            index: index2 + recipeOptions.distill.length,
+                            selected: selectedOutput?.id === option.id,
+                            disabled: isTransmuting,
+                            onSelect: setSelectedOutput
+                          },
+                          option.id
+                        )) })
+                      ] }) : null
+                    ]
                   },
                   source.ext
                 ) }),

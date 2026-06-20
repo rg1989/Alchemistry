@@ -36,4 +36,16 @@ describe('output path utilities', () => {
 
     expect(output).toBe(path.join('/tmp/alchemy', 'rune 3.webp'))
   })
+
+  it('uses refinement suffixes in crafted artifact names', () => {
+    const output = createUniqueOutputPath({
+      sourcePath: '/tmp/portrait.jpg',
+      targetExt: 'png',
+      outputDir: '/tmp/alchemy',
+      exists: () => false,
+      nameSuffix: 'no-bg',
+    })
+
+    expect(output).toBe(path.join('/tmp/alchemy', 'portrait no-bg.png'))
+  })
 })

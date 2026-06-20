@@ -5,9 +5,11 @@ import path from 'node:path'
 
 import { marked } from 'marked'
 import { PDFParse } from 'pdf-parse'
-import sharp from 'sharp'
 
 import { getAllowedOutputs, getRuleForExtension } from '../../src/shared/conversionMatrix'
+import { getImageRefinement, resolveRefinementOutputExt } from '../../src/shared/imageRefinements'
+import type { ImageRefinementId } from '../../src/shared/imageRefinements'
+import { processImage } from './image'
 
 const require = createRequire(import.meta.url)
 const rawFfmpegPath = require('ffmpeg-static') as string | null
@@ -20,12 +22,14 @@ interface ConvertFileOptions {
   sourcePath: string
   outputPath: string
   outputExt: string
+  refinement?: ImageRefinementId
 }
 
 export async function convertFile({
   sourcePath,
   outputPath,
   outputExt,
+  refinement,
 }: ConvertFileOptions): Promise<void> {
   const sourceExt = path.extname(sourcePath).replace(/^\./, '').toLowerCase()
   const normalizedOutputExt = outputExt.replace(/^\./, '').toLowerCase()
@@ -33,6 +37,33 @@ export async function convertFile({
 
   if (!rule) {
     throw new Error('This reagent has no known transmutations.')
+  }
+
+  if (refinement) {
+    if (rule.family !== 'image') {
+      throw new Error('Only image reagents can be refined.')
+    }
+
+    const refinementOption = getImageRefinement(refinement)
+
+    if (!refinementOption) {
+      throw new Error('That refinement is not in the grimoire yet.')
+    }
+
+    const expectedExt = resolveRefinementOutputExt(sourceExt, refinement)
+
+    if (normalizedOutputExt !== expectedExt) {
+      throw new Error(`Refinement .${refinement} expects a .${expectedExt} artifact.`)
+    }
+
+    await processImage({
+      sourcePath,
+      outputPath,
+      outputExt: normalizedOutputExt,
+      sourceExt,
+      refinement,
+    })
+    return
   }
 
   const isOutputAllowed = getAllowedOutputs(sourceExt).some(
@@ -44,7 +75,12 @@ export async function convertFile({
   }
 
   if (rule.family === 'image') {
-    await convertImage(sourcePath, outputPath, normalizedOutputExt)
+    await processImage({
+      sourcePath,
+      outputPath,
+      outputExt: normalizedOutputExt,
+      sourceExt,
+    })
     return
   }
 
@@ -59,15 +95,6 @@ export async function convertFile({
   }
 
   await convertDocument(sourcePath, outputPath, sourceExt, normalizedOutputExt)
-}
-
-async function convertImage(
-  sourcePath: string,
-  outputPath: string,
-  outputExt: string,
-): Promise<void> {
-  const format = outputExt === 'jpg' ? 'jpeg' : outputExt
-  await sharp(sourcePath).toFormat(format as keyof sharp.FormatEnum).toFile(outputPath)
 }
 
 async function convertMedia(sourcePath: string, outputPath: string): Promise<void> {

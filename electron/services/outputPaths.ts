@@ -6,6 +6,7 @@ interface CreateUniqueOutputPathOptions {
   targetExt: string
   outputDir: string
   exists: (candidate: string) => boolean
+  nameSuffix?: string
 }
 
 export function getAlchemyOutputDir(homeDir = os.homedir()): string {
@@ -17,21 +18,23 @@ export function createUniqueOutputPath({
   targetExt,
   outputDir,
   exists,
+  nameSuffix,
 }: CreateUniqueOutputPathOptions): string {
   const parsed = path.parse(sourcePath)
   const normalizedExt = targetExt.startsWith('.') ? targetExt : `.${targetExt}`
-  const firstCandidate = path.join(outputDir, `${parsed.name}${normalizedExt}`)
+  const baseName = nameSuffix ? `${parsed.name} ${nameSuffix}` : parsed.name
+  const firstCandidate = path.join(outputDir, `${baseName}${normalizedExt}`)
 
   if (!exists(firstCandidate)) {
     return firstCandidate
   }
 
   let suffix = 2
-  let candidate = path.join(outputDir, `${parsed.name} ${suffix}${normalizedExt}`)
+  let candidate = path.join(outputDir, `${baseName} ${suffix}${normalizedExt}`)
 
   while (exists(candidate)) {
     suffix += 1
-    candidate = path.join(outputDir, `${parsed.name} ${suffix}${normalizedExt}`)
+    candidate = path.join(outputDir, `${baseName} ${suffix}${normalizedExt}`)
   }
 
   return candidate
